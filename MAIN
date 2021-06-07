@@ -1,0 +1,44 @@
+
+// This #include statement was automatically added by the Particle IDE.
+#include <Adafruit_DHT_Particle.h>
+
+// This #include statement was automatically added by the Particle IDE.
+#include <ThingSpeak.h>
+
+#define DHTTYPE  DHT22
+#define DHTPIN   D4
+
+DHT dht(DHTPIN, DHTTYPE);
+
+double serverTempMax = 40;
+double serverTemp;
+bool overheatYes = false;
+long lastRecall = 0;
+
+void setup()
+{
+  Serial.begin(9600);
+  Particle.variable("serverTemp", &serverTemp, DOUBLE);
+  dht.begin();
+  delay(2000);
+}
+
+void loop()
+{
+  long currentTime = millis();
+  long timeTaken = currentTime - lastRecall;
+  bool shouldSendRecall = lastRecall==0 || timeTaken >= 3600000;
+  
+  serverTemp = dht.getTempCelcius();
+  
+  if(serverTemp>=serverTempMax && shouldSendRecall){
+      Particle.publish("server_temp", "overheat");
+      overheatYes = true;
+  }
+  
+  ThingSpeak.setField(1,serverTemp);
+  ThingSpeak.writeFields("THINGSPEAK CHANNEL NUMBER", "YOUR API KEY"); 
+  
+  Serial.println(serverTemp,2);
+  delay(1000);
+} 
